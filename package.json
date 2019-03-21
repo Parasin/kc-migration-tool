@@ -1,12 +1,12 @@
 {
-  "name": "kc migration tool",
+  "name": "kc-migration-tool",
+  "author": "Evan Bechtol <evan.bechtol@ericsson.com>",
   "version": "1.0.0",
   "description": "Migrate legacy KC MySQL DB to new MongoDB collection",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Evan Bechtol",
   "dependencies": {
     "mongoose": "^4.12.0",
     "mysql2": "^1.4.2",

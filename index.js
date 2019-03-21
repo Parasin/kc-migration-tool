@@ -15,7 +15,7 @@ const config    = require( './config' ),
         }
       } );
 
-let start = new Date();
+const start = new Date();
 
 mongoose.Promise = global.Promise;
 mongoose.connect( config.dbUrl, {
@@ -31,19 +31,17 @@ mongoose.connect( config.dbUrl, {
       .authenticate()
       .then( () => {
         console.log( 'MySQL Database connection successful' );
-
-
         return getTables();
       } )
       .then( ( resultSet ) => {
         const tables   = resultSet.tables;
         let promiseArr = [];
 
-        for ( let i = 0; i < tables.length; i++ ) {
-          if ( !invalidApplication( tables[ i ] ) ) {
-            promiseArr.push( getTableData( tables[ i ] ) );
+        tables.forEach(function( elem ) {
+          if ( !invalidApplication( elem ) ) {
+            promiseArr.push( getTableData( elem ) );
           }
-        }
+        } );
 
         return Promise.all( promiseArr );
       } )
@@ -51,21 +49,22 @@ mongoose.connect( config.dbUrl, {
         let promiseArr  = [],
             record      = {},
             application = '';
-        for ( let i = 0; i < resultSet.length; i++ ) {
-          for ( let j = 0; j < resultSet[ i ].data[ 0 ].length; j++ ) {
-            record      = resultSet[ i ].data[ 0 ][ j ];
+
+        resultSet.forEach(function( elem ) {
+          elem.data[ 0 ].forEach( function ( innerElem ) {
+            record      = innerElem;
             application = record.application;
 
             if ( !invalidApplication( application ) ) {
               promiseArr.push( saveToMongo( record ) );
             }
-          }
-        }
+          } );
+        } );
 
         return Promise.all( promiseArr );
       } )
       .then( ( resultSet ) => {
-        let end = new Date() - start;
+        const end = new Date() - start;
 
         if ( resultSet && resultSet.length ) {
           console.log( `Successfully migrated ${resultSet.length} documents in %dms`, end );
@@ -90,9 +89,9 @@ function getTables () {
           }
 
           let tables = [];
-          for ( let i = 0; i < results[ 0 ].length; i++ ) {
-            tables.push( results[ 0 ][ i ].Tables_in_Catalogue );
-          }
+          results[ 0 ].forEach(function(elem) {
+            tables.push( elem.Tables_in_Catalogue );
+          } );
 
           return resolve( {
             success : true,
@@ -104,7 +103,7 @@ function getTables () {
 
 function getTableData ( table ) {
   return new Promise( ( resolve, reject ) => {
-    let query = `SELECT category, sub_category AS subCategory, issue, script, work_instruction AS workInstruction, doc_link AS docLink FROM ${table}`;
+    const query = `SELECT category, sub_category AS subCategory, issue, script, work_instruction AS workInstruction, doc_link AS docLink FROM ${table}`;
     sequelize
         .query( query )
         .then( data => {
@@ -116,11 +115,11 @@ function getTableData ( table ) {
           }
 
           if ( data.length ) {
-            for ( let i = 0; i < data.length; i++ ) {
-              for ( let j = 0; j < data[ i ].length; j++ ) {
-                data[ i ][ j ].application = table;
-              }
-            }
+            data.forEach(function( outerElem ) {
+              outerElem.map(function ( innerElem, idx ) {
+                return outerElem[idx].application = table;
+              } );
+            } );
           }
 
           return resolve( {
@@ -134,11 +133,7 @@ function getTableData ( table ) {
 function saveToMongo ( data ) {
   return new Promise( ( resolve, reject ) => {
     if ( data ) {
-      let options = {
-            upsert : true,
-            new    : true
-          },
-          entry   = new Catalog( _.pick( data, 'application', 'category', 'subCategory', 'issue', 'script', 'workInstruction', 'docLink' ) );
+      const entry   = new Catalog( _.pick( data, 'application', 'category', 'subCategory', 'issue', 'script', 'workInstruction', 'docLink' ) );
 
       entry.save( ( err, doc ) => {
         if ( err ) {
@@ -158,5 +153,14 @@ function saveToMongo ( data ) {
 }
 
 function invalidApplication ( application ) {
-  return application === 'AppVersion' || application === 'Help' || application === 'Mapping' || application === 'Response' || application === 'Test' || application === 'User';
+  const invalidApps = [
+    'AppVersion',
+    'Help',
+    'Mapping',
+    'Response',
+    'Test',
+    'User'
+  ];
+
+  return invalidApps.includes( application );
 }
